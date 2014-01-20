@@ -10,7 +10,7 @@ open FractalFun.Slider
 // Record types
 type Point = { x: float; y: float }
 type Spec = { iterations: int; scale: float; scaleFactor: float; angle: float; leftAngle: float;
-              rightAngle: float; rotate: float; translateX: float; translateY: float }
+              rightAngle: float; rotate: float; translateX: float; translateY: float; lineWidth: float }
 
 // Global values
 let document = Globals.document
@@ -19,7 +19,7 @@ let context = canvas.getContext_2d()
 let width = canvas.clientWidth
 let height = canvas.clientHeight
 let emptySpec = { iterations = 0; scale = 0.; scaleFactor = 0.; angle = 0.; leftAngle = 0.; 
-                 rightAngle = 0.; rotate = 0.;  translateX = 0.; translateY = 0.;  }
+                 rightAngle = 0.; rotate = 0.;  translateX = 0.; translateY = 0.; lineWidth = 0. }
 
 // Function to convert degrees to radians
 let radians degrees = 
@@ -36,6 +36,7 @@ let sliders = [   (* min   max   def *)
     "Rotate",       -180., 180., 0.,  (fun spec value -> { spec with rotate = radians(90. - value) })
     "Translate X",  -999., 999., 0.,  (fun spec value -> { spec with translateX = value })
     "Translate Y",  -999., 999., 0.,  (fun spec value -> { spec with translateY = value })
+    "Line Width",    1.,   5.,   2.,  (fun spec value -> { spec with lineWidth = value })
 ]
 
 // Computes the endpoint of a line
@@ -44,9 +45,9 @@ let endpoint point angle length =
       y = point.y + length * sin angle }
 
 // Draws a line
-let draw point angle length =
+let draw point angle length lineWidth =
     let endpoint = endpoint point angle length
-    context.lineWidth <- 2.
+    context.lineWidth <- lineWidth
     context.beginPath()
     context.moveTo(point.x, point.y)
     context.lineTo(endpoint.x, endpoint.y)
@@ -58,7 +59,7 @@ let render spec throwIfCancelled =
     let rec fractal point scale angle iterations = 
         async { if iterations = 0 then () else
                 throwIfCancelled()
-                let endpoint = draw point angle scale
+                let endpoint = draw point angle scale spec.lineWidth
                 do! fractal endpoint (scale * spec.scaleFactor) (angle + spec.angle + spec.leftAngle) (iterations - 1)
                 do! fractal endpoint (scale * spec.scaleFactor) (angle - spec.angle - spec.rightAngle) (iterations - 1) }
     context.clearRect(0., 0., width, height)

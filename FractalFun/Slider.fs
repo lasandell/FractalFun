@@ -1,7 +1,7 @@
-﻿// Module for creating HTML sliders. Each slider read reads
-// and writes parameters to and from the hash portion of the 
-// current URL. Whenever a parameter changes an asynchronous
-// function is called that applies the new state.
+﻿// Module for creating HTML sliders. Each slider reads and
+// writes parameters to and from the hash portion of the 
+// current URL. Whenever a parameter changes, an asynchronous
+// function is called to apply the new state.
 [<ReflectedDefinition>]
 module FractalFun.Slider
 
@@ -79,7 +79,7 @@ let createSlider (name, min, max, def, mapState) =
         input.value <- getParam name (def.ToString())
         mapState state (input.value |> Double.Parse)
 
-// Create and configure sliders
+// Create and configure the sliders
 let initSliders sliders applyState state =
     let state = ref state
     let mapStates = sliders |> List.map createSlider

@@ -13,6 +13,11 @@ let document = Globals.document
 let window = Globals.window
 let location = Globals.window.location
 
+// Operator used in conjunction with DOM event handlers so that 
+// I don't have to return an object at the end of every handler.
+let (~%) handler =
+    Func<'event, obj>(handler >> box)
+
 // Format a param name nicely for the URL.
 let paramName (name:string) =
     name.Replace(" ", "")
@@ -20,8 +25,8 @@ let paramName (name:string) =
 // Read all params from the URL
 let readParams() =
     if location.hash = "" then Map.empty else
-    location.hash.Replace("#", "").Split('&')
-    |> Seq.map (fun s -> s.Split('='))
+    location.hash.Replace("#", "").Split '&'
+    |> Seq.map (fun s -> s.Split '=')
     |> Seq.map (fun a -> a.[0], a.[1])
     |> Map.ofSeq
 
@@ -30,8 +35,9 @@ let writeParams map =
     Map.toSeq map
     |> Seq.sortBy fst
     |> Seq.map (fun (n, v) -> n + "=" + v)
-    |> String.concat("&")
-    |> fun p -> location.hash <- p
+    |> String.concat "&"
+    |> (+) (location.href.Split('#').[0] + "#")
+    |> location.replace
 
 // Set a particular parameter on the URL
 let setParam name value =
@@ -47,19 +53,17 @@ let getParam name def =
 
 // Append HTML child nodes 
 let appendChild (parent:Node) child =
-    parent.appendChild(child) |> ignore
+    parent.appendChild child |> ignore
     child
 
 // Returns a function that runs the given asynchronous function,
 // cancelling the previous run on each subsequent call. The function 
-// must accept a data argument and another function that throws an
-// an exception when the current request is cancelled.
+// must accept a data argument and a cancellation token.
 let asyncRunner func =
-    let tokenSource = ref(CancellationTokenSource())
-    (fun arg -> 
-        (!tokenSource).Cancel()
-        tokenSource := CancellationTokenSource()
-        Async.StartImmediate(func arg (!tokenSource).Token.ThrowIfCancellationRequested))
+    let tokenSource = ref (CancellationTokenSource())
+    fun arg -> (!tokenSource).Cancel()
+               tokenSource := CancellationTokenSource()
+               Async.StartImmediate(func arg (!tokenSource).Token)
 
 // Creates an individual slider. Returns a function that can
 // compute the new state based on the current URL parameter.
@@ -72,22 +76,16 @@ let createSlider (name, min, max, def, mapState) =
     input._type <- "range"
     input.min <- min.ToString() 
     input.max <- max.ToString()
-    input.addEventListener_change (fun e ->
-        setParam name input.value
-        obj())
-    fun state -> 
-        input.value <- getParam name (def.ToString())
-        mapState state (input.value |> Double.Parse)
+    input.addEventListener_change %(fun _ -> setParam name input.value)
+    fun state -> input.value <- getParam name (def.ToString())
+                 mapState state (input.value |> Double.Parse)
 
 // Create and configure the sliders
 let initSliders sliders applyState state =
     let state = ref state
     let mapStates = sliders |> List.map createSlider
-    let applyStateAsync = asyncRunner applyState
     let applyChanges() =
-        mapStates |> Seq.iter(fun mapState -> state := mapState !state)
-        applyStateAsync !state
-    window.addEventListener_hashchange(fun _ ->
-        applyChanges()
-        obj())
+        mapStates |> Seq.iter (fun mapState -> state := mapState !state)
+        applyState !state
+    window.addEventListener_hashchange %(fun _ -> applyChanges())
     applyChanges()

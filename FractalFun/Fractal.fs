@@ -14,7 +14,7 @@ type Spec = { iterations: int; scale: float; scaleFactor: float; angle: float; l
 
 // Global values
 let document = Globals.document
-let canvas = document.getElementById("canvas") :?> HTMLCanvasElement
+let canvas = document.getElementById "canvas" :?> HTMLCanvasElement
 let context = canvas.getContext_2d()
 let width = canvas.clientWidth
 let height = canvas.clientHeight
@@ -34,7 +34,7 @@ let sliders = [   (* min   max   def *)
     "Left Angle",   -180., 180., 0.,  (fun spec value -> { spec with leftAngle = radians value })
     "Right Angle",  -180., 180., 0.,  (fun spec value -> { spec with rightAngle = radians value })
     "Rotate",       -180., 180., 0.,  (fun spec value -> { spec with rotate = radians(90. - value) })
-    "Translate X",  -999., 999., 0.,  (fun spec value -> { spec with translateX = value })
+    "Translate X",  -999., 999., 0.,  (fun spec value -> { spec with translateX = width / 2. + value })
     "Translate Y",  -999., 999., 0.,  (fun spec value -> { spec with translateY = value })
     "Line Width",    1.,   5.,   2.,  (fun spec value -> { spec with lineWidth = value })
 ]
@@ -55,15 +55,17 @@ let draw point angle length lineWidth =
     endpoint
   
 // Generates a fractal asynchronously, allowing for cancellation
-let render spec throwIfCancelled =
-    let rec fractal point scale angle iterations = 
-        async { if iterations = 0 then () else
-                throwIfCancelled()
-                let endpoint = draw point angle scale spec.lineWidth
-                do! fractal endpoint (scale * spec.scaleFactor) (angle + spec.angle + spec.leftAngle) (iterations - 1)
-                do! fractal endpoint (scale * spec.scaleFactor) (angle - spec.angle - spec.rightAngle) (iterations - 1) }
-    context.clearRect(0., 0., width, height)
-    fractal { x = width / 2. + spec.translateX; y = spec.translateY } spec.scale spec.rotate spec.iterations
+let render spec (token:CancellationToken) =
+    let rec fractal point scale angle iterations = async { 
+        if iterations = 0 then () else
+        token.ThrowIfCancellationRequested()
+        let endpoint = draw point angle scale spec.lineWidth
+        do! fractal endpoint (scale * spec.scaleFactor) (angle + spec.angle + spec.leftAngle) (iterations - 1)
+        do! fractal endpoint (scale * spec.scaleFactor) (angle - spec.angle - spec.rightAngle) (iterations - 1)
+    }
+    context.fillStyle <- "white"
+    context.fillRect(0., 0., width, height)
+    fractal { x = spec.translateX; y = spec.translateY } spec.scale spec.rotate spec.iterations
 
 // Compiled entry point (referenced by the Startup module)
 let main() = 
@@ -71,8 +73,6 @@ let main() =
     canvas.height <- height
     context.translate(0., height)
     context.scale(1., -1.)
-    initSliders sliders render emptySpec
-    let downloadLink = document.getElementById("download") :?> HTMLLinkElement
-    downloadLink.addEventListener_click(fun _ -> 
-        downloadLink.href <- canvas.toDataURL()
-        obj())
+    initSliders sliders (asyncRunner render) emptySpec
+    let downloadLink = document.getElementById "download" :?> HTMLLinkElement
+    downloadLink.addEventListener_click %(fun _ ->  downloadLink.href <- canvas.toDataURL())

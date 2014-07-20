@@ -1,0 +1,27 @@
+﻿#canvas {
+    display: block; 
+    width: 500px; 
+    height: 500px; 
+    border: solid 1px; 
+    border-color: black;
+}
+
+#sliders {
+    position: absolute;
+    margin-top: 0px;
+    left: 520px;
+}
+
+#sliders>div {
+    margin-bottom: 20px;
+}
+
+#sliders>div>label {
+    display: inline-block;
+    width: 100px
+}
+
+#sliders>div>input[type='range'] {
+    display: inline-block; 
+    width: 200px
+}

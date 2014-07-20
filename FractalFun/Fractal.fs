@@ -4,6 +4,7 @@
 module FractalFun.Fractal
 
 open FunScript
+open FunScript.TypeScript
 open FunScript.Core.Async
 open FractalFun.Slider
 

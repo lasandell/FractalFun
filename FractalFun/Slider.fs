@@ -7,6 +7,7 @@ module FractalFun.Slider
 
 open System
 open FunScript.Core.Async
+open FunScript.TypeScript
 
 // Global values
 let document = Globals.document
